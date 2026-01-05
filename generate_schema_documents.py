@@ -133,7 +133,7 @@ def make_table_document(
         f'Table: {table}\n'
         f'Primary key: {primary_key_text}\n'
         f'Columns:\n{column_descriptors}\n'
-        f'Relationships (foreign keys):\n{foreign_key_text}')
+        f'Foreign key(s):\n{foreign_key_text}')
 
     # Create table document
     document = SchemaDoc(

@@ -65,10 +65,14 @@ def get_relevant_documents(vector_db: lancedb.table.LanceTable, query: str):
     results = vector_db.search(context+query).limit(50).to_pandas()
     if not results.empty:
         top_score = results.iloc[0]['_distance'] # or 'score'?
-        adaptive_threshold = top_score * 1.05
+        adaptive_threshold = top_score * 1.10
         top_results = results[results['_distance'] <= adaptive_threshold]
+    
         return top_results
+    
     return pd.DataFrame()
+
+
 
 # Example usage:
 # vector_db = upsert_schema_docs_to_lancedb(docs)
