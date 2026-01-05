@@ -8,5 +8,13 @@ Currently the best way to run it is through the scratch.ipynb notebook. There ar
 
 ### To Do:
 - Better define the most relevant documents to retrieve (e.g., re-rank the top results, pick a better threshold or dynamically set it)
-- Implemente guardrails for SQL query safety and accuracy (e.g., explore agentic approach to iterate on the query, improve document descriptions)
+- Implemente guardrails for SQL query safety and accuracy (e.g., improve the RAG process, explore agentic approach to iterate on the query, improve document descriptions)
 - Implement data-to-analysis part of the pipeline
+
+### Keywords / Buzzwords:
+- RAG (retrieval augmented generation)
+- Language models
+- HuggingFace transformers
+- Python
+- SQL
+- Natural Language Processing
