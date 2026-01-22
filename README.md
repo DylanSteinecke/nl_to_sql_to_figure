@@ -10,6 +10,7 @@ Currently the best way to run it is through the scratch.ipynb notebook. There ar
 - Better define the most relevant documents to retrieve (e.g., re-rank the top results, pick a better threshold or dynamically set it)
 - Implemente guardrails for SQL query safety and accuracy (e.g., improve the RAG process, explore agentic approach to iterate on the query, improve document descriptions)
 - Implement data-to-analysis part of the pipeline
+- Try to explicitly code some of the above and then extend to implement a LangGraph version. Use tools or skills for the analyses/plots. 
 
 ### Keywords / Buzzwords:
 - RAG (retrieval augmented generation)
