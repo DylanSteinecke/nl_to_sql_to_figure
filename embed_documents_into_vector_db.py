@@ -3,6 +3,7 @@ Embeds documents into a vector database
 '''
 from lancedb.pydantic import LanceModel, Vector
 from lancedb.embeddings import get_registry
+from lancedb.table import Table
 import lancedb
 import pandas as pd
 
@@ -57,7 +58,7 @@ def upsert_schema_docs_to_lancedb(
     return table
 
 
-def get_relevant_documents(vector_db: lancedb.table.LanceTable, query: str):
+def get_relevant_documents(vector_db: Table, query: str):
     '''
     Search the vector database for relevant schema documents
     '''

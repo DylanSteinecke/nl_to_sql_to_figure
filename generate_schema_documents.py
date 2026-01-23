@@ -183,11 +183,12 @@ def make_column_document(table: str, column: Dict[str, Any]) -> SchemaDoc:
         ref_table=None,
         ref_column=None,
         text=col_text,
-        meta={'table': table, 
-                'column': column_name, 
-                'dtype': data_type, 
-                'primary_key': column['primary_key'], 
-                'notnull': column['notnull']},
+        meta={
+            'table': table, 
+            'column': column_name, 
+            'dtype': data_type, 
+            'primary_key': column['primary_key'], 
+            'notnull': column['notnull']},
     )
     return document
 
