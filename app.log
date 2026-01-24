@@ -1,0 +1,125 @@
+2026-01-22 17:40:29,794 ---Example Document---
+Table: albums
+Primary key: AlbumId
+Columns:
+ - AlbumId (INTEGER) [PRIMARY KEY NOT NULL] (ex: 1, 4, 2)
+ - Title (NVARCHAR(160)) [NOT NULL] (ex: For Those About To Rock We Salute You, Balls to the Wall, Restless and Wild)
+ - ArtistId (INTEGER) [NOT NULL] (ex: 1, 2, 3)
+Foreign key(s):
+ - albums.ArtistId → artists.ArtistId
+
+2026-01-22 17:40:30,734 86 documents in vector database
+2026-01-22 17:40:30,781 3 relevant documents found for Who are the top 3 artists?
+2026-01-22 17:40:30,918 https://huggingface.co:443 "GET /api/models/MaziyarPanahi/sqlcoder-7b-2-GGUF/revision/main HTTP/1.1" 200 2182
+2026-01-22 17:40:31,060 https://huggingface.co:443 "GET /api/models/MaziyarPanahi/sqlcoder-7b-2-GGUF/revision/main HTTP/1.1" 200 2182
+2026-01-22 17:41:04,641 Generated:  SELECT a.Name FROM artists a ORDER BY COUNT(DISTINCT ai.AlbumId) DESC NULLS LAST LIMIT 3
+2026-01-22 17:41:07,269 Generated:  SELECT a."Name" FROM artists a ORDER BY a."Name" DESC NULLS LAST LIMIT 3
+2026-01-22 17:41:11,073 Generated:  SELECT a.name FROM artists a ORDER BY (SELECT COUNT(*) FROM albums WHERE artistid = a.artistid) DESC NULLS LAST LIMIT 3
+2026-01-22 17:41:14,139 Generated:  SELECT a."Name" FROM artists a ORDER BY COUNT(a.ArtistId) DESC NULLS LAST LIMIT 3
+2026-01-22 17:41:17,356 Generated:  SELECT a.name FROM artists a ORDER BY COUNT(DISTINCT albums.artistid) DESC NULLS LAST LIMIT 3
+2026-01-22 17:41:17,358 SQL query passed the validation steps.
+2026-01-22 17:48:45,191 Exception in callback functools.partial(<bound method OutStream._flush of <ipykernel.iostream.OutStream object at 0x0000017E74823E50>>)
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 758, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 644, in _flush
+    self.session.send(
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\jupyter_client\session.py", line 814, in send
+    """
+        
+AttributeError: module 'zmq' has no attribute 'asyncio'
+2026-01-22 17:48:45,702 Exception in callback functools.partial(<bound method OutStream._flush of <ipykernel.iostream.OutStream object at 0x0000017E74823E50>>)
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 758, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 644, in _flush
+    self.session.send(
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\jupyter_client\session.py", line 814, in send
+    """
+        
+AttributeError: module 'zmq' has no attribute 'asyncio'
+2026-01-22 17:48:45,741 Exception in callback IOLoop._run_callback(functools.par...17E74823E50>>))
+handle: <TimerHandle when=1321947.8250000477 IOLoop._run_callback(functools.par...17E74823E50>>))>
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 758, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 644, in _flush
+    self.session.send(
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\jupyter_client\session.py", line 814, in send
+    """
+        
+AttributeError: module 'zmq' has no attribute 'asyncio'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 775, in _run_callback
+    except asyncio.CancelledError:
+           ^^^^^^^
+NameError: name 'asyncio' is not defined
+2026-01-22 17:48:45,744 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 550, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 171, in _handle_event
+    event_f()
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 583, in _schedule_in_thread
+    self._io_loop.call_later(self.flush_interval, self._flush)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 617, in call_later
+    return self.call_at(self.time() + delay, callback, *args, **kwargs)
+                        ^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 561, in time
+    return time.time()
+           ^^^^
+NameError: name 'time' is not defined
+2026-01-22 17:48:46,001 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 600, in _handle_events
+    self._handle_recv()
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 629, in _handle_recv
+    self._run_callback(callback, msg)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 550, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 171, in _handle_event
+    event_f()
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 583, in _schedule_in_thread
+    self._io_loop.call_later(self.flush_interval, self._flush)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 617, in call_later
+    return self.call_at(self.time() + delay, callback, *args, **kwargs)
+                        ^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 561, in time
+    return time.time()
+           ^^^^
+NameError: name 'time' is not defined
+2026-01-22 17:48:46,003 Exception in callback BaseAsyncIOLoop._handle_events(1444, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(1444, 1)>
+Traceback (most recent call last):
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\platform\asyncio.py", line 208, in _handle_events
+    handler_func(fileobj, events)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 600, in _handle_events
+    self._handle_recv()
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 629, in _handle_recv
+    self._run_callback(callback, msg)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\zmq\eventloop\zmqstream.py", line 550, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 171, in _handle_event
+    event_f()
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\ipykernel\iostream.py", line 583, in _schedule_in_thread
+    self._io_loop.call_later(self.flush_interval, self._flush)
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 617, in call_later
+    return self.call_at(self.time() + delay, callback, *args, **kwargs)
+                        ^^^^^^^^^^^
+  File "c:\Users\dsteinec\AppData\Local\anaconda3\envs\nl-to-data\Lib\site-packages\tornado\ioloop.py", line 561, in time
+    return time.time()
+           ^^^^
+NameError: name 'time' is not defined

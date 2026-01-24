@@ -1,13 +1,15 @@
 '''
 Embeds documents into a vector database
 '''
+from typing import Optional
+
 from lancedb.pydantic import LanceModel, Vector
 from lancedb.embeddings import get_registry
 from lancedb.table import Table
 import lancedb
 import pandas as pd
 
-from generate_schema_documents import SchemaDoc
+from generate_schema_documents import ColumnDoc
 
 # Define the embedding function 
 registry = get_registry()
@@ -15,20 +17,28 @@ lm = registry.get("sentence-transformers").create(name="all-MiniLM-L6-v2")
 
 # Schema is defined using the LanceModel base class
 class SchemaDocLanceModel(LanceModel):
-    '''Store schema document text and metadata, embed the text'''
-    id: str
-    doc_type: str
-    table: str = ""
-    column: str = ""
-    ref_table: str = ""
-    ref_column: str = ""
-    text: str = lm.SourceField() 
+    '''Store schema document text and metadata, embed the text'''    
+    
+    # Structural Metadata 
+    table_name: str
+    column_name: str
+    data_type: str
+    
+    # Primary / Foreign Key Info
+    is_primary_key: bool
+    is_foreign_key: bool    
+    related_table: Optional[str] = None
+    related_column: Optional[str] = None
+
+    # Vector DB Essentials
+    doc_id: str
+    text_description: str  
     vector: Vector(lm.ndims()) = lm.VectorField() # store vector here
 
 
 def upsert_schema_docs_to_lancedb(
-        documents: list[SchemaDoc], db_dir: str = "./lancedb", 
-        table_name: str = "schema_docs"):
+        documents: list[ColumnDoc], db_dir: str = './lancedb', 
+        table_name: str = 'schema_docs'):
     '''
     Create the LanceDB table for the schema documents.
     '''
@@ -38,12 +48,15 @@ def upsert_schema_docs_to_lancedb(
     data = [
         {
             "id": document.doc_id,
-            "doc_type": document.doc_type,
-            "table": document.table or "",
-            "column": document.column or "",
-            "ref_table": document.ref_table or "",
-            "ref_column": document.ref_column or "",
-            "text": document.text,
+            "data_type": document.data_type or "",
+            "table_name": document.table_name or "",
+            "column_name": document.column_name or "",
+            "related_table": document.related_table or "",
+            "related_column": document.related_column or "",
+            "text_description": document.text_description,
+            "related_column": document.related_column or "",
+            "is_primary_key": document.is_primary_key,
+            "is_foreign_key": document.is_foreign_key,
         }
         for document in documents
     ]

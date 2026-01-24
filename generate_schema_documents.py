@@ -3,25 +3,56 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+@dataclass
+class TableDoc:
+    table_name: str
+    primary_key: list[str]
+    foreign_keys: list[dict[str, str]]
 
 @dataclass
-class SchemaDoc:
+class ColumnDoc:
     '''
-    Represents a document describing a part of the database schema.
+    Represents a column document describing a part of the database schema.
     '''
+    # Vector DB Essentials
     doc_id: str
-    doc_type: str  # 'table' | 'column' | 'relationship'
-    table: Optional[str]
-    column: Optional[str]
-    ref_table: Optional[str]
-    ref_column: Optional[str]
-    text: str
-    meta: Dict[str, Any]
+    text_description: str        
+    
+    # Structural Metadata 
+    table_name: str
+    column_name: str
+    data_type: str
+    
+    # Primary / Foreign Key Info
+    is_primary_key: bool
+    is_foreign_key: bool    
+    related_table: Optional[str] = None
+    related_column: Optional[str] = None
+
+    @property
+    def metadata(self) -> dict:
+        '''
+        Helper to generate the dict format for the Vector DB insert.
+        '''
+        return {
+            'table_name': self.table_name,
+            'column_name': self.column_name,
+            'data_type': self.data_type,
+            'is_primary_key': self.is_primary_key,
+            'is_foreign_key': self.is_foreign_key,
+            'related_table': self.related_table,
+            'related_column': self.related_column
+        }
 
 
 def fetch_tables(cursor: sqlite3.Cursor) -> List[str]:
     '''
     SQL querying to get all tables in the SQLite database.
+
+    :param cursor: The SQLite DB cursor
+    :type cursor: sqlite3.Cursor
+    :return: List of table names
+    :rtype: List[str]
     '''
     rows = cursor.execute("""
         SELECT name
@@ -33,10 +64,17 @@ def fetch_tables(cursor: sqlite3.Cursor) -> List[str]:
 
 
 def fetch_column_samples(
-        cursor: sqlite3.Cursor, table: str, column: str, limit: int = 3
+        cursor: sqlite3.Cursor, table: str, column: str, limit: int = 5
     ) -> List[Any]:
     '''
     Gets some distinct non-null values for a column to aid semantic understanding.
+
+    :param cursor: Description
+    :type cursor: sqlite3.Cursor
+    :param table: Description
+    :type table: str
+    :param column: Description
+    :type column: str
     '''
     try:
         query = f'SELECT DISTINCT "{column}" FROM "{table}" WHERE "{column}" IS NOT NULL LIMIT ?'
@@ -51,6 +89,11 @@ def fetch_table_columns(
         cursor: sqlite3.Cursor, table: str) -> List[Dict[str, Any]]:
     '''
     SQL querying to get info about all columns in a given table.
+
+    :param cursor: Description
+    :type cursor: sqlite3.Cursor
+    :param table: Description
+    :type table: str
     '''
     rows = cursor.execute(f"""
         SELECT * FROM pragma_table_info('{table}')""").fetchall()
@@ -70,198 +113,122 @@ def fetch_table_columns(
     return cols
 
 
-def fetch_foreign_keys(
-        cursor: sqlite3.Cursor, table: str) -> List[Dict[str, Any]]:
+def make_column_document(
+        table: str, column: Dict[str, Any], conn: sqlite3.Connection
+    ) -> ColumnDoc:
     '''
-    SQL querying to get info about all foreign keys in a given table.
-    '''
-    rows = cursor.execute(
-        f"""SELECT * FROM pragma_foreign_key_list('{table}')""").fetchall()
-    # pragma_foreign_key_list columns:
-    # id, seq, table, from, to, on_update, on_delete, match
-    foreign_keys = []
-    for _id, seq, ref_tab, frm_col, to_col, on_update, on_del, match in rows:
-        foreign_keys.append({
-            'id': int(_id),
-            'seq': int(seq),
-            'ref_table': ref_tab,
-            'from_col': frm_col,
-            'to_col': to_col,
-            'on_update': on_update,
-            'on_delete': on_del,
-            'match': match,
-        })
+    Makes a column document object. Includes a text description suited
+    for embedding in the vector database + structured metadata for 
+    downstream use.
 
-    return foreign_keys
+    :param table: The name of the table the column belongs to
+    :type table: str
+    :param column: The column info as returned by fetch_table_columns()
+    :type column: Dict[str, Any]
+    :return: The constructed ColumnDoc object
+    '''
+    # Extract column metadata
+    column_name = column['name']
+    data_type = column['type'] or 'UNKNOWN'
+
+    # Create column's document text description
+    header = f"Table: {table}, Column: {column_name}"
+    column_samples = fetch_column_samples(
+        cursor=conn.cursor(), column=column_name, table=table, limit=5)
+    col_text = f"{header}. "+\
+               f"Type: {data_type}."+\
+               f"Sample values: {', '.join(str(s) for s in column_samples)}"
+
+    # Create document: text + metadata
+    document = ColumnDoc(
+        doc_id=f'column:{table}.{column["name"]}',
+        text_description=col_text,
+        table_name=table,
+        column_name=column['name'],
+        data_type=column['type'],
+        is_primary_key=column['primary_key'] > 0,
+        is_foreign_key=column['is_foreign_key'],
+        related_table=column.get('fk_ref_table'),
+        related_column=column.get('fk_ref_column'))
+
+    return document
 
 
 def make_table_document(
-        table: str, columns: List[Dict[str, Any]], 
-        foreign_keys: List[Dict[str, Any]]) -> SchemaDoc:
+        cursor: sqlite3.Cursor, table_name: str) -> TableDoc:
     '''
-    Makes a table document describing the table schema.
+    Makes a table document object, storing primary key and foreign key info
+    for lookup later, after retrieving relevant column documents and before
+    generating the final context for SQL query generation.
+        
+    :param cursor: Description
+    :type cursor: sqlite3.Cursor
+    :param table: Description
+    :type table: str
+    :return: Description
+    :rtype: TableDoc
     '''
-    # Column descriptions
-    pk_cols = [col['name'] for col in columns if col['primary_key'] > 0]
-    column_descs = []
-    for column in columns:
-        flags = []
-        if column['primary_key'] > 0: flags.append('PRIMARY KEY')
-        if column['notnull']: flags.append('NOT NULL')
-        flag_str = f' [{" ".join(flags)}]' if flags else ''
-        col_type = column['type'] or 'UNKNOWN'
-        sample_str = ""
-        if column['samples']:
-            samples = [str(sample)[:50] for sample in column['samples']]
-            sample_str = f" (ex: {', '.join(samples)})"
-        column_desc = f' - {column["name"]} ({col_type}){flag_str}{sample_str}'
-        column_descs.append(column_desc)
+    # Get Primary Key(s)
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    pk_columns = [row[1] for row in cursor.fetchall() if row[5] > 0]
 
-    # Foreign key relationship descriptions
-    f_key_lines = []
-    for foreign_key in foreign_keys:
-        from_col = foreign_key['from_col']
-        ref_table = foreign_key['ref_table']
-        to_col = foreign_key['to_col']
-        f_key_lines.append(f' - {table}.{from_col} → {ref_table}.{to_col}')
-
-    # Table document description
-    primary_key_text = ', '.join(pk_cols) if pk_cols else 'None'
-    column_descriptors = '\n'.join(column_descs)
-    foreign_key_text = '\n'.join(f_key_lines) if f_key_lines else '- None'
-    table_text = (
-        f'Table: {table}\n'
-        f'Primary key: {primary_key_text}\n'
-        f'Columns:\n{column_descriptors}\n'
-        f'Foreign key(s):\n{foreign_key_text}')
-
-    # Create table document
-    document = SchemaDoc(
-        doc_id=f'table:{table}',
-        doc_type='table',
-        table=table,
-        column=None,
-        ref_table=None,
-        ref_column=None,
-        text=table_text,
-        meta={'table': table, 
-            'pk_cols': pk_cols, 
-            'n_cols': len(columns), 
-            'n_fks': len(foreign_keys)},)
+    # Get Foreign Keys
+    cursor.execute(f"PRAGMA foreign_key_list({table_name})")
+    foreign_keys = []
+    for row in cursor.fetchall():
+        to_col = row[4] if row[4] is not None else "primary_key"
+        foreign_keys.append({
+            "column_name": row[3],      
+            "referenced_table": row[2], 
+            "referenced_column": to_col})
     
-    return document
-
-
-def make_column_document(table: str, column: Dict[str, Any]) -> SchemaDoc:
-    '''
-    Makes a column document describing the column schema.
-    '''
-    # Column description text
-    column_name = column['name']
-    data_type = column['type'] or 'UNKNOWN'
-    is_nullable = 'no' if column['notnull'] else 'yes'
-    is_primary_key = 'yes' if column['primary_key'] > 0 else 'no'
-    is_default = column['default'] if column['default'] is not None else 'None'
-    sample_text = "None"
-    if column['samples']:
-        sample_text = ", ".join([str(s) for s in column['samples']])
-    col_text = (
-        f'Column: {table}.{column_name}\n'
-        f'Data type: {data_type}\n'
-        f'Nullable: {is_nullable}\n'
-        f'Primary key: {is_primary_key}\n'
-        f'Default: {is_default}\n'
-        f'Sample values: {sample_text}\n'
-    )
-
-    # Create column document
-    document = SchemaDoc(
-        doc_id=f'column:{table}.{column_name}',
-        doc_type='column',
-        table=table,
-        column=column_name,
-        ref_table=None,
-        ref_column=None,
-        text=col_text,
-        meta={
-            'table': table, 
-            'column': column_name, 
-            'dtype': data_type, 
-            'primary_key': column['primary_key'], 
-            'notnull': column['notnull']},
-    )
-    return document
-
-
-def make_foreign_key_document(
-        table: str, foreign_key: Dict[str, Any]) -> SchemaDoc:
-    '''
-    Makes a foreign key document describing the foreign key relationship.
-    '''
-    from_col = foreign_key['from_col']
-    ref_table = foreign_key['ref_table']
-    to_col = foreign_key['to_col']
-    on_update = foreign_key['on_update']
-    on_delete = foreign_key['on_delete']
-    relationship_text = (
-        f'Relationship: {table}.{from_col}'
-        f'references {ref_table}.{to_col}\n'
-        f'Join hint: JOIN {ref_table} ON '
-        f'{table}.{from_col} = {ref_table}.{to_col}\n'
-        f'On update: {on_update}; On delete: {on_delete}')
-    document = SchemaDoc(
-        doc_id=f'rel:{table}.{from_col}->{ref_table}.{to_col}',
-        doc_type='relationship',
-        table=table,
-        column=from_col,
-        ref_table=ref_table,
-        ref_column=to_col,
-        text=relationship_text,
-        meta=dict(foreign_key, table=table))
+    table_document = TableDoc(
+        table_name=table_name,
+        primary_key=pk_columns,
+        foreign_keys=foreign_keys)
     
-    return document
+    return table_document
 
 
-def make_schema_documents(conn: sqlite3.Connection) -> List[SchemaDoc]:
+def make_schema_documents(
+        conn: sqlite3.Connection) -> tuple[List[TableDoc], List[ColumnDoc]]:
     '''
-    Writes documents describing the database schema.
+    Writes documents describing the database schema. Column documents will
+    be embedded into the vector database for retrieval later. Table documents
+    will be stored in memory for lookup when generating the final context for
+    SQL query generation.
+
+    :param conn: The SQLite database connection
+    :type conn: sqlite3.Connection
+    :return: A tuple of (table documents, column documents)
+    :rtype: tuple[List[TableDoc], List[ColumnDoc]]
     '''
-    documents: List[SchemaDoc] = []
+    column_documents: List[ColumnDoc] = []
+    table_documents: List[TableDoc] = []
     cursor = conn.cursor()
     tables = fetch_tables(cursor)
 
     for table in tables:
-        columns = fetch_table_columns(cursor, table)
-        foreign_keys = fetch_foreign_keys(cursor, table)
-
-        # ---- Table document ----
-        table_document = make_table_document(
-            foreign_keys=foreign_keys,
-            columns=columns, 
-            table=table)
-        documents.append(table_document)
+        # ---- Table documents ----
+        table_document = make_table_document(cursor=cursor, table_name=table)
+        table_documents.append(table_document)
 
         # ---- Column documents ----
+        columns = fetch_table_columns(cursor, table)
         for column in columns:
-            column_document = make_column_document(column=column, table=table)
-            documents.append(column_document)
+            column_document = make_column_document(
+                column=column, table=table, conn=conn)
+            column_documents.append(column_document)
 
-        # ---- Relationship documents ----
-        for foreign_key in foreign_keys:
-            foreign_key_document = make_foreign_key_document(
-                table=table,
-                foreign_key=foreign_key)
-            documents.append(foreign_key_document)
-
-    return documents
+    return table_documents, column_documents
 
 
 if __name__ == '__main__':
     conn = sqlite3.connect('Chinook.db')
-    documents = make_schema_documents(conn)
-    print(f'Generated {len(documents)} schema documents')
+    table_documents, column_documents = make_schema_documents(conn)
+    print(f'Generated {len(table_documents) + len(column_documents)} schema documents')
     
     # Print sample documents
     print('Sample documents:')
-    for document in documents[:3]:
-        print('\n---\n', document.doc_id, '\n', document.text)
+    for document in column_documents[:3]:
+        print('\n---\n', document.doc_id, '\n', document.text_description)
